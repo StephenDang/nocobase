@@ -34,6 +34,7 @@ import { HasOneRepository } from './relation-repository/hasone-repository';
 import { RelationRepository } from './relation-repository/relation-repository';
 import { updateAssociations, updateModelByValues } from './update-associations';
 import { UpdateGuard } from './update-guard';
+import _ from 'lodash';
 
 const debug = require('debug')('noco-database');
 
@@ -490,6 +491,28 @@ export class Repository<TModelAttributes extends {} = any, TCreationAttributes e
     return this.create({ values, transaction, hooks });
   }
 
+  valueObjectField(values: {}) {
+    const dialect = this.database.sequelize.getDialect();
+    if (dialect === 'mssql') {
+      const newValues = _.mapValues(values, (value, key) => {
+        const field = this.collection.fields.get(key);
+        if (field && typeof value === 'object') {
+          const fieldClass = field.constructor.name;
+          const objectFields = ['JsonField', 'JsonbField', 'ArrayField', 'SetField'];
+          if (_.includes(objectFields, fieldClass)) {
+            return `${JSON.stringify(value)}`;
+          }
+        }
+
+        return value;
+      });
+
+      return newValues;
+    }
+
+    return values;
+  }
+
   /**
    * Save instance to database
    *
@@ -515,7 +538,7 @@ export class Repository<TModelAttributes extends {} = any, TCreationAttributes e
 
     const values = guard.sanitize(options.values || {});
 
-    const instance = await this.model.create<any>(values, {
+    const instance = await this.model.create<any>(this.valueObjectField(values), {
       ...options,
       transaction,
     });

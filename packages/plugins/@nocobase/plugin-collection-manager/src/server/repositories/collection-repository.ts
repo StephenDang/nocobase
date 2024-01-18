@@ -78,11 +78,21 @@ export class CollectionRepository extends Repository {
         const fields = nameMap[instanceName].get('fields');
 
         return fields
-          .filter(
-            (field) =>
-              (field['type'] === 'belongsTo' && viewCollections.includes(field.options?.['target'])) ||
-              field['type'] === 'belongsToMany',
-          )
+          .filter((field) => {
+            let fieldOptions;
+            if (field.options) {
+              if (this.app.db.sequelize.getDialect() === 'mssql') {
+                fieldOptions = JSON.parse(field.options);
+              } else {
+                fieldOptions = field.options;
+              }
+            }
+
+            return (
+              (field['type'] === 'belongsTo' && viewCollections.includes(fieldOptions?.['target'])) ||
+              field['type'] === 'belongsToMany'
+            );
+          })
           .map((field) => field.get('name'));
       })();
 

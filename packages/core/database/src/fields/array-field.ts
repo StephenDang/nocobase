@@ -1,10 +1,29 @@
 import { DataTypes } from 'sequelize';
-import { BaseColumnFieldOptions, Field } from './field';
+import { BaseColumnFieldOptions, Field, FieldContext } from './field';
 
 export class ArrayField extends Field {
+  constructor(options?: any, context?: FieldContext) {
+    const dialect = context.database.sequelize.getDialect();
+    if (dialect === 'mssql') {
+      super(
+        {
+          ...options,
+          defaultValue: JSON.stringify(options.defaultValue),
+        },
+        context,
+      );
+    } else {
+      super(options, context);
+    }
+  }
+
   get dataType() {
-    if (this.database.sequelize.getDialect() === 'postgres') {
+    const dialect = this.database.sequelize.getDialect();
+    if (dialect === 'postgres') {
       return DataTypes.JSONB;
+    }
+    if (dialect === 'mssql') {
+      return DataTypes.TEXT;
     }
 
     return DataTypes.JSON;
@@ -14,8 +33,14 @@ export class ArrayField extends Field {
     const oldValue = model.get(this.options.name);
 
     if (oldValue) {
-      const newValue = oldValue.sort();
-      model.set(this.options.name, newValue);
+      const dialect = this.database.sequelize.getDialect();
+      if (dialect === 'mssql' && typeof oldValue === 'string') {
+        const newValue = JSON.stringify(JSON.parse(oldValue).sort());
+        model.set(this.options.name, newValue);
+      } else {
+        const newValue = oldValue.sort();
+        model.set(this.options.name, newValue);
+      }
     }
   };
 

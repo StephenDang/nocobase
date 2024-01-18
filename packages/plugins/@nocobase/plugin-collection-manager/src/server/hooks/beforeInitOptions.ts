@@ -1,5 +1,7 @@
 import Database, { Model } from '@nocobase/database';
 import { uid } from '@nocobase/utils';
+import _ from 'lodash';
+const Dottie = require('dottie');
 
 const setTargetKey = (db: Database, model: Model) => {
   if (model.get('targetKey')) {
@@ -27,8 +29,20 @@ const setSourceKey = (db: Database, model: Model) => {
   }
 };
 
+const getMagicAttribute = (database: Database, model: Model) => {
+  const collection = database.getCollection(model.constructor.name);
+  return collection.options.magicAttribute || 'options';
+};
+
 export const beforeInitOptions = {
   belongsTo(model: Model, { database }) {
+    const dialect = database.sequelize.getDialect();
+    let magicAttribute;
+    if (dialect === 'mssql') {
+      magicAttribute = getMagicAttribute(database, model);
+      Dottie.set(model.dataValues, magicAttribute, JSON.parse(model.get(magicAttribute)));
+    }
+
     const defaults = {
       // targetKey: 'id',
       foreignKey: `f_${uid()}`,
@@ -40,8 +54,19 @@ export const beforeInitOptions = {
       model.set(key, defaults[key]);
     }
     setTargetKey(database, model);
+
+    if (dialect === 'mssql') {
+      Dottie.set(model.dataValues, magicAttribute, JSON.stringify(model.get(magicAttribute)));
+    }
   },
   belongsToMany(model: Model, { database }) {
+    const dialect = database.sequelize.getDialect();
+    let magicAttribute;
+    if (dialect === 'mssql') {
+      magicAttribute = getMagicAttribute(database, model);
+      Dottie.set(model.dataValues, magicAttribute, JSON.parse(model.get(magicAttribute)));
+    }
+
     const defaults = {
       // targetKey: 'id',
       // sourceKey: 'id',
@@ -57,8 +82,19 @@ export const beforeInitOptions = {
     }
     setTargetKey(database, model);
     setSourceKey(database, model);
+
+    if (dialect === 'mssql') {
+      Dottie.set(model.dataValues, magicAttribute, JSON.stringify(model.get(magicAttribute)));
+    }
   },
   hasMany(model: Model, { database }) {
+    const dialect = database.sequelize.getDialect();
+    let magicAttribute;
+    if (dialect === 'mssql') {
+      magicAttribute = getMagicAttribute(database, model);
+      Dottie.set(model.dataValues, magicAttribute, JSON.parse(model.get(magicAttribute)));
+    }
+
     const defaults = {
       // targetKey: 'id',
       // sourceKey: 'id',
@@ -76,8 +112,19 @@ export const beforeInitOptions = {
     if (model.get('sortable') && model.get('type') === 'hasMany') {
       model.set('sortBy', model.get('foreignKey') + 'Sort');
     }
+
+    if (dialect === 'mssql') {
+      Dottie.set(model.dataValues, magicAttribute, JSON.stringify(model.get(magicAttribute)));
+    }
   },
   hasOne(model: Model, { database }) {
+    const dialect = database.sequelize.getDialect();
+    let magicAttribute;
+    if (dialect === 'mssql') {
+      magicAttribute = getMagicAttribute(database, model);
+      Dottie.set(model.dataValues, magicAttribute, JSON.parse(model.get(magicAttribute)));
+    }
+
     const defaults = {
       // sourceKey: 'id',
       foreignKey: `f_${uid()}`,
@@ -89,5 +136,9 @@ export const beforeInitOptions = {
       model.set(key, defaults[key]);
     }
     setSourceKey(database, model);
+
+    if (dialect === 'mssql') {
+      Dottie.set(model.dataValues, magicAttribute, JSON.stringify(model.get(magicAttribute)));
+    }
   },
 };

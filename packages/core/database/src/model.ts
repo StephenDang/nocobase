@@ -53,7 +53,7 @@ export class Model<TModelAttributes extends {} = any, TCreationAttributes extend
 
     const _schema = model._schema;
 
-    if (_schema && _schema != 'public') {
+    if (_schema && _schema != 'public' && _schema != 'dbo') {
       await this.sequelize.query(`CREATE SCHEMA IF NOT EXISTS "${_schema}";`, {
         raw: true,
         transaction: options?.transaction,

@@ -9,7 +9,13 @@ export class SetField extends ArrayField {
   beforeSave = (model) => {
     const oldValue = model.get(this.options.name);
     if (oldValue) {
-      model.set(this.options.name, [...new Set(oldValue)]);
+      const dialect = this.context.database.sequelize.getDialect();
+      if (dialect === 'mssql' && typeof oldValue === 'string') {
+        const newValue = JSON.stringify([...new Set(JSON.parse(oldValue))]);
+        model.set(this.options.name, newValue);
+      } else {
+        model.set(this.options.name, [...new Set(oldValue)]);
+      }
     }
   };
 

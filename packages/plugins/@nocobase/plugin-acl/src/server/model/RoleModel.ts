@@ -18,6 +18,10 @@ export class RoleModel extends Model {
       allowConfigure: this.get('allowConfigure') as boolean,
     });
 
-    role.snippets = new Set(this.get('snippets'));
+    if (this.sequelize.getDialect() === 'mssql' && this.get('snippets')) {
+      role.snippets = new Set(JSON.parse(this.get('snippets')));
+    } else {
+      role.snippets = new Set(this.get('snippets'));
+    }
   }
 }

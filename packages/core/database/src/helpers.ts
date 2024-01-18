@@ -122,6 +122,11 @@ const dialectVersionAccessors = {
     },
     version: '>=10',
   },
+  mssql: {
+    sql: "SELECT SERVERPROPERTY('ProductMajorVersion') as version",
+    get: (v: string) => semver.minVersion(v).version,
+    version: '>=14',
+  },
 };
 
 export async function checkDatabaseVersion(db: Database) {

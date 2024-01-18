@@ -680,9 +680,10 @@ export class UiSchemaRepository extends Repository {
       }
 
       if (nodePosition === 'last') {
+        const dialect = this.database.sequelize.getDialect();
         const maxSort = await db.sequelize.query(
           `SELECT ${
-            this.database.sequelize.getDialect() === 'postgres' ? 'coalesce' : 'ifnull'
+            dialect === 'postgres' || dialect === 'mssql' ? 'coalesce' : 'ifnull'
           }(MAX(TreeTable.sort), 0) as maxsort FROM ${treeTable} as TreeTable
                                                         LEFT JOIN ${treeTable} as NodeInfo
                                                                   ON NodeInfo.descendant = TreeTable.descendant and NodeInfo.depth = 0
@@ -1005,6 +1006,13 @@ WHERE TreeTable.depth = 1 AND  TreeTable.ancestor = :ancestor and TreeTable.sort
 
     const db = this.database;
 
+    let nodeInfoAsync;
+    if (db.sequelize.getDialect() === 'mssql') {
+      nodeInfoAsync = 0;
+    } else {
+      nodeInfoAsync = false;
+    }
+
     const rawSql = `
         SELECT "SchemaTable"."x-uid" as "x-uid", "SchemaTable"."name" as "name", "SchemaTable"."schema" as "schema",
                TreePath.depth as depth,
@@ -1013,7 +1021,7 @@ WHERE TreeTable.depth = 1 AND  TreeTable.ancestor = :ancestor and TreeTable.sort
                  LEFT JOIN ${this.uiSchemasTableName} as "SchemaTable" ON "SchemaTable"."x-uid" =  TreePath.descendant
                  LEFT JOIN ${this.uiSchemaTreePathTableName} as NodeInfo ON NodeInfo.descendant = "SchemaTable"."x-uid" and NodeInfo.descendant = NodeInfo.ancestor and NodeInfo.depth = 0
                  LEFT JOIN ${this.uiSchemaTreePathTableName} as ParentPath ON (ParentPath.descendant = "SchemaTable"."x-uid" AND ParentPath.depth = 1)
-        WHERE TreePath.ancestor = :ancestor  AND (NodeInfo.async  = false or TreePath.depth = 1)`;
+        WHERE TreePath.ancestor = :ancestor  AND (NodeInfo.async  = ${nodeInfoAsync} or TreePath.depth = 1)`;
 
     const nodes = await db.sequelize.query(this.sqlAdapter(rawSql), {
       replacements: {
@@ -1035,6 +1043,13 @@ WHERE TreeTable.depth = 1 AND  TreeTable.ancestor = :ancestor and TreeTable.sort
 
     const treeTable = this.uiSchemaTreePathTableName;
 
+    let nodeInfoAsync;
+    if (db.sequelize.getDialect() === 'mssql') {
+      nodeInfoAsync = 1;
+    } else {
+      nodeInfoAsync = true;
+    }
+
     const rawSql = `
         SELECT "SchemaTable"."x-uid" as "x-uid", "SchemaTable"."name" as name, "SchemaTable"."schema" as "schema" ,
                TreePath.depth as depth,
@@ -1043,7 +1058,9 @@ WHERE TreeTable.depth = 1 AND  TreeTable.ancestor = :ancestor and TreeTable.sort
                  LEFT JOIN ${this.uiSchemasTableName} as "SchemaTable" ON "SchemaTable"."x-uid" =  TreePath.descendant
                  LEFT JOIN ${treeTable} as NodeInfo ON NodeInfo.descendant = "SchemaTable"."x-uid" and NodeInfo.descendant = NodeInfo.ancestor and NodeInfo.depth = 0
                  LEFT JOIN ${treeTable} as ParentPath ON (ParentPath.descendant = "SchemaTable"."x-uid" AND ParentPath.depth = 1)
-        WHERE TreePath.ancestor = :ancestor  ${options?.includeAsyncNode ? '' : 'AND (NodeInfo.async != true )'}
+        WHERE TreePath.ancestor = :ancestor  ${
+          options?.includeAsyncNode ? '' : `AND (NodeInfo.async != ${nodeInfoAsync} )`
+        }
     `;
 
     const nodes = await db.sequelize.query(this.sqlAdapter(rawSql), {

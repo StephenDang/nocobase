@@ -12,7 +12,36 @@ export class MagicAttributeModel extends Model {
     return collection.options.magicAttribute || 'options';
   }
 
+  dialect() {
+    const db: Database = (<any>this.constructor).database;
+    return db.sequelize.getDialect();
+  }
+
   set(key: any, value?: any, options?: any) {
+    if (this.dialect() === 'mssql') {
+      if (typeof value === 'string') {
+        let valueObject;
+        try {
+          valueObject = JSON.parse(value);
+        } catch (err) {
+          valueObject = undefined;
+        } finally {
+          if (typeof valueObject === 'object') {
+            value = valueObject;
+          }
+        }
+      }
+
+      if (
+        key === 'id' &&
+        !(this.constructor as any).rawAttributes[key] &&
+        // @ts-ignore
+        !_.includes(Object.keys(this.constructor.primaryKeys), key)
+      ) {
+        return this.setV1(key, value, options);
+      }
+    }
+
     if (typeof key === 'string') {
       const [column] = key.split('.');
       if ((this.constructor as any).hasAlias(column)) {
@@ -110,6 +139,10 @@ export class MagicAttributeModel extends Model {
           this._previousDataValues = { ...this.dataValues };
         }
       }
+      if (this.dialect() === 'mssql') {
+        Dottie.set(this.dataValues, this.magicAttribute, JSON.stringify(_.get(this.dataValues, this.magicAttribute)));
+      }
+
       return this;
     }
     if (!options) options = {};
@@ -147,17 +180,32 @@ export class MagicAttributeModel extends Model {
         // @ts-ignore
         if (!this._isAttribute(key)) {
           // @ts-ignore
-          if (key.includes('.') && this.constructor._jsonAttributes.has(key.split('.')[0])) {
+          if (key.includes('.')) {
+            const parentKey = key.split('.')[0];
             // @ts-ignore
-            const previousNestedValue = Dottie.get(this.dataValues, key);
-            if (!_.isEqual(previousNestedValue, value)) {
+            let isJsonAttribute = this.constructor._jsonAttributes.has(parentKey);
+            if (this.dialect() === 'mssql') {
               // @ts-ignore
-              this._previousDataValues = _.cloneDeep(this._previousDataValues);
-              // @ts-ignore
-              Dottie.set(this.dataValues, key, value);
-              this.changed(key.split('.')[0], true);
+              const attributeType = _.get(this.constructor.rawAttributes, parentKey + '.type');
+              isJsonAttribute =
+                // @ts-ignore
+                _.has(this.constructor.rawAttributes, parentKey) &&
+                // @ts-ignore
+                attributeType.constructor.name === 'TEXT';
+            }
+
+            if (isJsonAttribute) {
+              const previousNestedValue = Dottie.get(this.dataValues, key);
+              if (!_.isEqual(previousNestedValue, value)) {
+                // @ts-ignore
+                this._previousDataValues = _.cloneDeep(this._previousDataValues);
+                // @ts-ignore
+                Dottie.set(this.dataValues, key, value);
+                this.changed(parentKey, true);
+              }
             }
           }
+
           return this;
         }
 
@@ -227,13 +275,24 @@ export class MagicAttributeModel extends Model {
         return super.get(key, value);
       }
       const options = super.get(this.magicAttribute, value);
-      return _.get(options, key);
+      if (this.dialect() === 'mssql' && options && typeof options === 'string') {
+        return _.get(JSON.parse(options), key);
+      } else {
+        return _.get(options, key);
+      }
     }
     const data = super.get(key, value);
-    return {
-      ..._.omit(data, this.magicAttribute),
-      ...data[this.magicAttribute],
-    };
+    if (this.dialect() === 'mssql') {
+      return {
+        ..._.omit(data, this.magicAttribute),
+        ...JSON.parse(data[this.magicAttribute]),
+      };
+    } else {
+      return {
+        ..._.omit(data, this.magicAttribute),
+        ...data[this.magicAttribute],
+      };
+    }
   }
 
   async update(values?: any, options?: any) {

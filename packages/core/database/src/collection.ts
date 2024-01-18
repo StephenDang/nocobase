@@ -761,7 +761,7 @@ export class Collection<
   public getTableNameWithSchemaAsString() {
     const tableName = this.model.tableName;
 
-    if (this.collectionSchema() && this.db.inDialect('postgres')) {
+    if (this.collectionSchema() && this.db.inDialect('postgres', 'mssql')) {
       return `${this.collectionSchema()}.${tableName}`;
     }
 
@@ -783,6 +783,10 @@ export class Collection<
 
     if (this.db.inDialect('postgres')) {
       return 'public';
+    }
+
+    if (this.db.inDialect('mssql')) {
+      return 'dbo';
     }
 
     return undefined;
