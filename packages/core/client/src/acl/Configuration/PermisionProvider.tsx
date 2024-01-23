@@ -4,10 +4,19 @@ import React, { createContext, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAPIClient } from '../../api-client';
 import { useRecord } from '../../record-provider';
+import { useCurrentAppInfo } from '@nocobase/client';
 
 export const SettingCenterPermissionProvider = (props) => {
   const { currentRecord } = useContext(PermissionContext);
-  if (!currentRecord?.snippets?.includes('pm.*')) {
+  let snippets;
+  const { data } = useCurrentAppInfo() || {};
+  const dialect = data?.database.dialect;
+  if (dialect === 'mssql') {
+    snippets = JSON.parse(currentRecord?.snippets);
+  } else {
+    snippets = currentRecord?.snippets;
+  }
+  if (!snippets?.includes('pm.*')) {
     return null;
   }
   return <div>{props.children}</div>;
@@ -19,7 +28,15 @@ export const PermissionProvider = (props) => {
   const api = useAPIClient();
   const record = useRecord();
   const { t } = useTranslation();
-  const { snippets } = record;
+
+  let snippets;
+  const { data } = useCurrentAppInfo() || {};
+  const dialect = data?.database.dialect;
+  if (dialect === 'mssql') {
+    snippets = JSON.parse(record.snippets);
+  } else {
+    snippets = record.snippets;
+  }
   snippets?.forEach((key) => {
     record[key] = true;
   });

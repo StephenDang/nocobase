@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAPIClient, useRequest } from '../../api-client';
 import { SchemaComponent } from '../../schema-component';
 import { PermissionContext } from './PermisionProvider';
+import { useCurrentAppInfo } from '@nocobase/client';
 
 const SnippetCheckboxGroup = connect((props) => {
   const { t } = useTranslation();
@@ -55,6 +56,9 @@ const SnippetCheckboxGroup = connect((props) => {
 export const RoleConfigure = () => {
   const { update, currentRecord } = useContext(PermissionContext);
   const { t } = useTranslation();
+  const { data } = useCurrentAppInfo() || {};
+  const dialect = data?.database.dialect;
+
   return (
     <SchemaComponent
       components={{ SnippetCheckboxGroup }}
@@ -74,7 +78,13 @@ export const RoleConfigure = () => {
                   })
                   .then((res) => {
                     const record = res?.data?.data;
-                    record.snippets?.forEach((key) => {
+                    let snippets;
+                    if (dialect === 'mssql') {
+                      snippets = JSON.parse(record.snippets);
+                    } else {
+                      snippets = record.snippets;
+                    }
+                    snippets?.forEach((key) => {
                       record[key] = true;
                     });
                     return { data: record };

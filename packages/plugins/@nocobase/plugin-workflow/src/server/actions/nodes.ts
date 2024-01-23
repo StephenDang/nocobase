@@ -1,6 +1,7 @@
 import { Context, utils } from '@nocobase/actions';
-import { MultipleRelationRepository, Op, Repository } from '@nocobase/database';
+import Database, { MultipleRelationRepository, Op, Repository } from '@nocobase/database';
 import type { WorkflowModel } from '../types';
+import _ from 'lodash';
 
 export async function create(context: Context, next) {
   const { db } = context;
@@ -14,7 +15,7 @@ export async function create(context: Context, next) {
     }
 
     const instance = await repository.create({
-      values,
+      values: compatibleWithMssql(db, values),
       whitelist,
       blacklist,
       updateAssociationValues,
@@ -198,7 +199,7 @@ export async function update(context: Context, next) {
 
     return repository.update({
       filterByTk,
-      values,
+      values: compatibleWithMssql(db, values),
       whitelist,
       blacklist,
       filter,
@@ -209,4 +210,19 @@ export async function update(context: Context, next) {
   });
 
   await next();
+}
+
+function compatibleWithMssql(db: Database, values: any) {
+  const { options } = db;
+  let newValues;
+  if (options.dialect === 'mssql') {
+    newValues = {
+      ..._.omit(values, 'config'),
+      config: JSON.stringify(values.config),
+    };
+  } else {
+    newValues = values;
+  }
+
+  return newValues;
 }
