@@ -27,6 +27,7 @@ import { collection } from './schemas/collectionFields';
 import { SyncFieldsAction } from './SyncFieldsAction';
 import { SyncSQLFieldsAction } from './SyncSQLFieldsAction';
 import { ViewCollectionField } from './ViewInheritedField';
+import useDialect from '../hooks/useDialect';
 
 const indentStyle = css`
   .ant-table {
@@ -285,6 +286,7 @@ export const CollectionFields = () => {
   const { refreshAsync } = useContext(ResourceActionContext);
   const targetTemplate = getTemplate(template);
   const inherits = getInheritCollections(name);
+  const { isDialect } = useDialect();
 
   const columns: TableColumnProps<any>[] = [
     {
@@ -396,7 +398,10 @@ export const CollectionFields = () => {
       params: {
         paginate: false,
         filter: {
-          $or: [{ 'interface.$not': null }, { 'options.source.$notEmpty': true }],
+          $or: [
+            { 'interface.$not': null },
+            isDialect('mssql') ? { 'options.$includes': 'source' } : { 'options.source.$notEmpty': true },
+          ],
         },
         sort: ['sort'],
       },
