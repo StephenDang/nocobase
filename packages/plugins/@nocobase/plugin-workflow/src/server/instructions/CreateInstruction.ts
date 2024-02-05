@@ -10,12 +10,13 @@ export class CreateInstruction extends Instruction {
 
     const { repository, model } = (<typeof FlowNodeModel>node.constructor).database.getCollection(collection);
     const options = processor.getParsedValue(params, node.id);
+
     const created = await repository.create({
       ...options,
       context: {
-        executionId: processor.execution.id,
+        stack: Array.from(new Set((processor.execution.context.stack ?? []).concat(processor.execution.id))),
       },
-      // transaction: processor.transaction,
+      transaction: processor.transaction,
     });
 
     let result = created;
@@ -28,7 +29,7 @@ export class CreateInstruction extends Instruction {
       result = await repository.findOne({
         filterByTk: created[model.primaryKeyAttribute],
         appends: Array.from(includeFields),
-        // transaction: processor.transaction,
+        transaction: processor.transaction,
       });
     }
 

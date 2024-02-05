@@ -54,6 +54,7 @@ function useUpdateConfigAction() {
 }
 
 export abstract class Trigger {
+  sync: boolean;
   title: string;
   description?: string;
   // group: string;
@@ -64,7 +65,7 @@ export abstract class Trigger {
   components?: { [key: string]: any };
   useInitializers?(config): SchemaInitializerItemType | null;
   initializers?: any;
-  useActionTriggerable?: boolean | (() => boolean);
+  isActionTriggerable?: boolean | ((config: object, context?: object) => boolean);
 }
 
 function TriggerExecution() {

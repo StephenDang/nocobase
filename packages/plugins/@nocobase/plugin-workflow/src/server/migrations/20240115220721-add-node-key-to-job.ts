@@ -6,7 +6,6 @@ export default class extends Migration {
   async up() {
     const { db } = this.context;
 
-    const PluginModel = db.getModel('applicationPlugins');
     const JobRepo = db.getRepository('jobs');
     await db.sequelize.transaction(async (transaction) => {
       const jobs = await JobRepo.find({
@@ -20,7 +19,7 @@ export default class extends Migration {
             }
             return job.update(
               {
-                nodeKey: job.node.key,
+                nodeKey: job.node?.key,
               },
               {
                 silent: true,
