@@ -653,7 +653,7 @@ export class Repository<TModelAttributes extends {} = any, TCreationAttributes e
     });
 
     for (const instance of instances) {
-      await updateModelByValues(instance, values, {
+      await updateModelByValues(instance, this.valueObjectField(values), {
         ...options,
         sanitized: true,
         transaction,
