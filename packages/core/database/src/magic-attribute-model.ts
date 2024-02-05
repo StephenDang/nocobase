@@ -182,6 +182,7 @@ export class MagicAttributeModel extends Model {
           // @ts-ignore
           if (key.includes('.')) {
             const parentKey = key.split('.')[0];
+            const chidlKey = key.split('.')[1];
             // @ts-ignore
             let isJsonAttribute = this.constructor._jsonAttributes.has(parentKey);
             if (this.dialect() === 'mssql') {
@@ -199,8 +200,19 @@ export class MagicAttributeModel extends Model {
               if (!_.isEqual(previousNestedValue, value)) {
                 // @ts-ignore
                 this._previousDataValues = _.cloneDeep(this._previousDataValues);
+
                 // @ts-ignore
-                Dottie.set(this.dataValues, key, value);
+                if (this.dialect() === 'mssql') {
+                  if (_.isPlainObject(this.dataValues[parentKey])) {
+                    Dottie.set(this.dataValues, key, value);
+                  } else if (_.isString(this.dataValues[parentKey])) {
+                    const parentValue = JSON.parse(this.dataValues[parentKey]);
+                    Dottie.set(parentValue, chidlKey, value);
+                    Dottie.set(this.dataValues, parentKey, parentValue);
+                  }
+                } else {
+                  Dottie.set(this.dataValues, key, value);
+                }
                 this.changed(parentKey, true);
               }
             }
