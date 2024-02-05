@@ -275,7 +275,11 @@ export class UiSchemaRepository extends Repository {
     await this.clearXUidPathCache(rootUid, transaction);
     if (!newSchema['properties']) {
       const s = await this.model.findByPk(rootUid, { transaction });
-      s.set('schema', { ...s.toJSON(), ...newSchema });
+      if (this.database.sequelize.getDialect() === 'mssql') {
+        s.dataValues['schema'] = JSON.stringify({ ...s.toJSON(), ...newSchema });
+      } else {
+        s.set('schema', { ...s.toJSON(), ...newSchema });
+      }
       // console.log(s.toJSON());
       await s.save({ transaction, hooks: false });
       if (newSchema['x-server-hooks']) {
@@ -669,6 +673,15 @@ export class UiSchemaRepository extends Repository {
           WHERE TreeTable.depth = 1 AND TreeTable.ancestor = :ancestor and NodeInfo.type = :type`;
         }
 
+        // Compatible with mssql
+        if (this.database.sequelize.getDialect() === 'mssql') {
+          updateSql = `UPDATE TreeTable
+          SET TreeTable.sort = TreeTable.sort + 1
+          FROM ${treeTable} as TreeTable
+          INNER JOIN ${treeTable} as NodeInfo ON (NodeInfo.descendant = TreeTable.descendant and NodeInfo.depth = 0)
+          WHERE TreeTable.depth = 1 AND TreeTable.ancestor = :ancestor and NodeInfo.type = :type`;
+        }
+
         // move all child last index
         await db.sequelize.query(updateSql, {
           replacements: {
@@ -741,6 +754,18 @@ export class UiSchemaRepository extends Repository {
 JOIN ${treeTable} as NodeInfo ON (NodeInfo.descendant = TreeTable.descendant and NodeInfo.depth = 0)
 SET TreeTable.sort = TreeTable.sort + 1
 WHERE TreeTable.depth = 1 AND  TreeTable.ancestor = :ancestor and TreeTable.sort >= :sort and NodeInfo.type = :type`;
+        }
+
+        // Compatible with mssql
+        if (this.database.sequelize.getDialect() === 'mssql') {
+          updateSql = `UPDATE TreeTable
+          SET TreeTable.sort = TreeTable.sort + 1
+          FROM ${treeTable} as TreeTable
+          INNER JOIN ${treeTable} as NodeInfo ON (NodeInfo.descendant = TreeTable.descendant and NodeInfo.depth = 0)
+          WHERE TreeTable.depth = 1
+            AND TreeTable.ancestor = :ancestor
+            and TreeTable.sort >= :sort
+            and NodeInfo.type = :type`;
         }
 
         await db.sequelize.query(updateSql, {
