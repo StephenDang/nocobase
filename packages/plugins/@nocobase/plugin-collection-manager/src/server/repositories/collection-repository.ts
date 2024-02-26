@@ -88,10 +88,7 @@ export class CollectionRepository extends Repository {
               }
             }
 
-            return (
-              (field['type'] === 'belongsTo' && viewCollections.includes(fieldOptions?.['target'])) ||
-              field['type'] === 'belongsToMany'
-            );
+            return field['type'] === 'belongsTo' || field['type'] === 'belongsToMany';
           })
           .map((field) => field.get('name'));
       })();
@@ -99,6 +96,7 @@ export class CollectionRepository extends Repository {
       if (lodash.isArray(skipField) && skipField.length) {
         lazyCollectionFields.set(instanceName, skipField);
       }
+
       this.database.logger.debug(`load collection`, {
         instanceName,
         submodule: 'CollectionRepository',

@@ -75,15 +75,17 @@ const LocalPlugins = () => {
   const debouncedSearchValue = useDebounce(searchValue, { wait: 100 });
 
   const keyWordlists = [
-    'Data Model',
-    'Fields',
+    'Data model tools',
+    'Data sources',
+    'Collections',
+    'Collection fields',
     'Blocks',
     'Actions',
-    'Users & permissions',
     'Workflow',
+    'Users & permissions',
+    'Authentication',
     'System management',
-    'System & security',
-    'Third party services',
+    'Logging and monitoring',
     'Others',
   ];
 
@@ -184,7 +186,7 @@ const LocalPlugins = () => {
             </Space>
           </div>
         </div>
-        <Row style={{ width: '100%' }}>
+        <Row style={{ width: '100%' }} wrap={false}>
           <Col flex="200px">
             <List
               size="small"
